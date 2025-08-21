@@ -1,0 +1,36 @@
+# VS Code
+.vscode/
+
+# Auto gen by rust
+/server/target/
+/server/release/
+/server/debug/
+*.rs.bk
+
+# Auto gen by c++
+/build/
+/client/*.o
+/client/*.out
+/client/*.exe
+/client/*.out
+/client/*.a
+/client/*.so
+/client/*.dll
+
+# Auto run
+/scripts
+
+# compilations + temps
+*.log
+*.swp
+*.swo
+.DS_Store
+
+# Compilations Dirs
+/build/
+
+# Other
+.env
+*.secret
+
+# to do
