@@ -3,4 +3,6 @@ Test for practice
 
 ## Compilation
 ```bash
-make all
+make all # Server and client
+make server # Compiles server
+make client # Compiles client

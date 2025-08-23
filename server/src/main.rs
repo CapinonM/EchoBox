@@ -1,7 +1,11 @@
 use std::{
     io::{Read,Write},
     net::{TcpListener, TcpStream},
-    sync::{Arc, Mutex},
+    sync::
+    {
+        Arc, Mutex,
+        atomic::{AtomicI32, Ordering}
+    },
     thread,
     time::Duration,
     time::Instant
@@ -15,7 +19,7 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Debug)]
 enum Message {
-    NewUser { username: String },
+    NewUser { username: String, user_color: u32 },
     Chat { user_id: i32, content: String },
     Disconnect { user_id: i32 }
 }
@@ -92,9 +96,9 @@ fn handle_connections(
             {
                 match msg
                 {
-                    Message::NewUser { username } =>
+                    Message::NewUser { username, user_color } =>
                     {
-                        println!("New user joined: {}", username);
+                        handle_new_user(user_color, username, &connected_people);
                     }
                     Message::Chat { user_id, content } =>
                     {
@@ -103,6 +107,7 @@ fn handle_connections(
                     Message::Disconnect { user_id } =>
                     {
                         println!("User {} disconnected", user_id);
+                        handle_disconnect_user(user_id, &connected_people);
                     }
                 }
             }
@@ -112,4 +117,40 @@ fn handle_connections(
             }
         }
     }
+}
+
+fn assign_id() -> i32
+{
+    static ID: AtomicI32 = AtomicI32::new(0);
+    ID.fetch_add(1, Ordering::Relaxed) + 1
+}
+
+fn handle_new_user
+(
+    color: u32,
+    user: String,
+    connected_people: &Arc<Mutex<Vec<Person>>>
+)
+{
+    let mut people = connected_people.lock().unwrap();
+    let id: i32 = assign_id();
+    let new_user = Person
+    {
+        user_color: color,
+        user_id: id,
+        user_name: user.clone(),
+        user_uptime: Instant::now()
+    };
+    println!("{} joined, assigned: {}", user, id);
+    people.push(new_user);
+}
+
+fn handle_disconnect_user
+(
+    user_id: i32,
+    connected_people: &Arc<Mutex<Vec<Person>>>
+)
+{
+    let mut people = connected_people.lock().unwrap();
+    people.retain(|p| p.user_id != user_id);
 }
