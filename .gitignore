@@ -32,5 +32,6 @@
 # Other
 .env
 *.secret
+todo.txt
 
 # to do

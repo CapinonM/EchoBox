@@ -8,21 +8,25 @@ use std::{
     },
     thread,
     time::Duration,
-    time::Instant
+    time::Instant,
+    collections::HashMap
 };
 
 use serde::{
     Serialize,
-    Deserialize
+    Deserialize,
 };
 
+use serde_json::json;
 
 #[derive(Serialize, Deserialize, Debug)]
 enum Message {
     NewUser { username: String, user_color: u32 },
     Chat { user_id: i32, content: String },
-    Disconnect { user_id: i32 }
+    Disconnect { user_id: i32 },
+    Command { message_type: i32 }
 }
+
 
 struct Person 
 {
@@ -98,16 +102,20 @@ fn handle_connections(
                 {
                     Message::NewUser { username, user_color } =>
                     {
-                        handle_new_user(user_color, username, &connected_people);
+                        handle_new_user(user_color, username, &connected_people, &mut stream);
                     }
                     Message::Chat { user_id, content } =>
                     {
-                        println!("[{}]: {}", user_id, content);
+                        handle_user_message(user_id, content, &connected_people);
                     }
                     Message::Disconnect { user_id } =>
                     {
                         println!("User {} disconnected", user_id);
                         handle_disconnect_user(user_id, &connected_people);
+                    }
+                    Message::Command { message_type } =>
+                    {
+                        handle_commands(message_type);
                     }
                 }
             }
@@ -129,12 +137,14 @@ fn handle_new_user
 (
     color: u32,
     user: String,
-    connected_people: &Arc<Mutex<Vec<Person>>>
+    connected_people: &Arc<Mutex<Vec<Person>>>,
+    stream: &mut TcpStream
 )
 {
     let mut people = connected_people.lock().unwrap();
     let id: i32 = assign_id();
-    let new_user = Person
+    send_user_id(id, stream).unwrap();
+    let new_user: Person = Person
     {
         user_color: color,
         user_id: id,
@@ -145,6 +155,34 @@ fn handle_new_user
     people.push(new_user);
 }
 
+fn handle_user_message
+(
+    user_id: i32,
+    content: String,
+    connected_people: &Arc<Mutex<Vec<Person>>>
+)
+{
+    let people = connected_people.lock().unwrap();
+    
+    if let Some(index) = people.iter().position(|p| p.user_id == user_id)
+    {
+        println!("[{} with ID {}]: {}", people[index].user_name, user_id, content);
+    }
+    else
+    {
+        println!("[{} (unknown user)]: {}", user_id, content);
+    }
+}
+
+fn send_user_id(assigned_id: i32, stream: &mut TcpStream) -> std::io::Result<()>
+{
+    let msg: serde_json::Value = json!({ "AssignedId": { "user_id": assigned_id } });
+    let serialized = serde_json::to_string(&msg)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    stream.write_all(serialized.as_bytes())?;
+    Ok(())
+}
+
 fn handle_disconnect_user
 (
     user_id: i32,
@@ -153,4 +191,13 @@ fn handle_disconnect_user
 {
     let mut people = connected_people.lock().unwrap();
     people.retain(|p| p.user_id != user_id);
+}
+
+fn handle_commands(command_type: i32)
+{
+    match command_type
+    {
+        1 => { println!("Ping!"); }
+        _ => { println!("Other"); }
+    }
 }
