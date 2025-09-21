@@ -17,7 +17,7 @@ use serde::{
     Deserialize,
 };
 
-use serde_json::json;
+use serde_json::{json, Result};
 
 #[derive(Serialize, Deserialize, Debug)]
 enum Message {
@@ -115,7 +115,7 @@ fn handle_connections(
                     }
                     Message::Command { message_type } =>
                     {
-                        handle_commands(message_type);
+                        handle_commands(message_type, &mut stream);
                     }
                 }
             }
@@ -193,11 +193,20 @@ fn handle_disconnect_user
     people.retain(|p| p.user_id != user_id);
 }
 
-fn handle_commands(command_type: i32)
+fn handle_commands(command_type: i32, stream: &mut TcpStream)
 {
     match command_type
     {
-        1 => { println!("Ping!"); }
+        1 => { let _ = answer_ping(stream); }
         _ => { println!("Other"); }
     }
+}
+
+fn answer_ping(stream: &mut TcpStream) -> std::io::Result<()>
+{
+    let msg: serde_json::Value = json!({ "Ping": true });
+    let serialized = serde_json::to_string(&msg)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    stream.write_all(serialized.as_bytes())?;
+   Ok(())
 }
