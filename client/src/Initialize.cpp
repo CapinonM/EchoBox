@@ -33,7 +33,7 @@ void ClientApp::run_menu()
         }
         else if (user_input == 2)
         {
-            //ping_server();
+            this->ping_server();
         }
         else if (user_input == 3)
         {
@@ -77,13 +77,18 @@ int ClientApp::get_menu_command()
         }
         else 
         {
+            //fixed coredumped if command wasn't found
+            if(!(command_list.find(user_input) != command_list.end()))
+            {
+                continue;
+            }
             is_valid = true;
         }
     }
-
+    
     auto it = command_list.find(user_input);
     command_id = it->second;
-
+    
     return command_id;
 }
 
@@ -104,6 +109,7 @@ void ClientApp::chat_loop()
             }
             else if (command == 1)
             {
+                disconnect();
                 return;
             }
             else
@@ -172,6 +178,55 @@ int ClientApp::parse_chat_command(const std::string &command)
     }
 
     return command_id;
+}
+
+void ClientApp::disconnect()
+{
+    const int u_id = this->user_id;
+    json msg;
+    msg["Disconnect"] = { {"user_id", u_id} };
+    std::string msg_str = msg.dump();
+
+    try
+    {
+        CustSock.send_data(msg_str);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+    }
+    
+}
+
+void ClientApp::ping_server()
+{
+    std::string u_name = this->user_name;
+    json msg;
+    msg["Command"] = { {"message_type", 1} };
+    std::string msg_str = msg.dump();
+
+    try
+    {
+        CustSock.send_data(msg_str);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+        return;
+    }
+
+    char buffer[1024] = {0};
+    int bytes_received = CustSock.receive_data(buffer, sizeof(buffer));
+    
+    if (bytes_received <= 0)
+    {
+        std::cout << "Couldn't get response from server" << std::endl;
+        return;
+    }
+    else
+    {
+        std::cout << "Server is up! Join using \'/join\' command!" << std::endl;
+    }
 }
 
 void ClientApp::prompt_for_username()

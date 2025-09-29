@@ -20,6 +20,8 @@ public:
     bool parse_incoming_json(const std::vector<std::pair<std::string, std::string>> &atributes, std::string &response, std::vector<T> &declarations);
     void send_parsed_json(const std::vector<std::pair<std::string, std::string>> &data);
     int parse_chat_command(const std::string &command);
+    void disconnect();
+    void ping_server();
 private:
     CustomSocket CustSock;
     std::string user_name;
